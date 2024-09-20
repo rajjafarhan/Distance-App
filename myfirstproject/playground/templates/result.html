@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route Map</title>
+
+    <!-- Leaflet.js CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(41, 128, 185, 0.5);
+        }
+        .info-box {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .ticket {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 5px 9px rgba(18, 141, 172, 0.3);
+            padding: 15px;
+            text-align: center;
+            width: 20%;
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+        }
+        .ticket h3 {
+            margin: 0;
+            color: #2980b9;
+        }
+        .ticket p {
+            margin: 5px 0;
+            color: #555;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        .destination-details {
+            margin-top: 20px;
+            text-align: center;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            padding-bottom: 25px;
+            padding-top: 5px;
+        }
+        .destination-details h2 {
+            color: Black;
+            margin-bottom: 15px;
+            text-shadow: 0 0 5px rgba(41, 128, 185, 0.3);
+        }
+        .destination-details p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .destination-details a {
+            text-decoration: none;
+            color: #2980b9;
+            font-weight: bold;
+            border: 2px solid #2980b9;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+            margin-bottom: 20px;
+        }
+        .destination-details a:hover {
+            background-color: #2980b9;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Route from {{ origin }} to {{ destination }}</h1>
+    
+    <div class="info-box">
+        <div class="ticket">
+            <i class="fas fa-ruler-combined"></i>
+            <div>
+                <h3> Distance</h3>
+                <p>{{ distance }}</p>
+            </div>
+        </div>
+        <div class="ticket">
+            <i class="fas fa-clock"></i>
+            <div>
+                <h3> Duration</h3>
+                <p>{{ duration }}</p>
+            </div>
+        </div>
+        <div class="ticket">
+            <i class="fas fa-bicycle"></i>
+            <div>
+                <h3> Cost (Bike)</h3>
+                <p>PKR {{ cost_bike|floatformat:2 }}</p>
+            </div>
+        </div>
+        <div class="ticket">
+            <i class="fas fa-car"></i>
+            <div>
+                <h3> Cost (Car)</h3>
+                <p>PKR {{ cost_car|floatformat:2 }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="map"></div>
+
+    <div class="destination-details">
+        <h2>About {{ destination }}</h2>
+        <p>{{ destination_description }}</p>
+        <a href="{{ wikipedia_link }}" target="_blank">View more on Wikipedia</a>
+    </div>
+
+    <script id="coordinates-data" type="application/json">
+        {
+            "origin_lat": {{ origin_lat|default:0 }},
+            "origin_lon": {{ origin_lon|default:0 }},
+            "destination_lat": {{ destination_lat|default:0 }},
+            "destination_lon": {{ destination_lon|default:0 }}
+        }
+    </script>
+
+    <script>
+        var coordinates = JSON.parse(document.getElementById('coordinates-data').textContent);
+        var originLat = coordinates.origin_lat;
+        var originLon = coordinates.origin_lon;
+        var destinationLat = coordinates.destination_lat;
+        var destinationLon = coordinates.destination_lon;
+
+        if (originLat === 0 || originLon === 0 || destinationLat === 0 || destinationLon === 0) {
+            alert("Error: Invalid coordinates provided. Please check the locations.");
+        } else {
+            var map = L.map('map').setView([(originLat + destinationLat) / 2, (originLon + destinationLon) / 2], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Car icon for the origin (from) side
+            var carIconUrl = 'https://www.iconpacks.net/icons/2/free-car-icon-2901-thumb.png'; // Replace with your car icon URL
+            var carIcon = L.icon({
+                iconUrl: carIconUrl,
+                iconSize: [40, 30], // Size of the icon
+                iconAnchor: [15, 15], // Point of the icon which will correspond to marker's location
+                popupAnchor: [0, -30] // Point from which the popup should open relative to the iconAnchor
+            });
+
+            // Create a marker for the origin (from) with car icon
+            var originMarker = L.marker([originLat, originLon], { icon: carIcon }).addTo(map)
+                .bindPopup('<b>Origin</b><br>{{ origin }}').openPopup();
+
+            // Normal marker for the destination (to) side
+            var destinationMarker = L.marker([destinationLat, destinationLon]).addTo(map)
+                .bindPopup('<b>Destination</b><br>{{ destination }}');
+
+            var latlngs = [
+                [originLat, originLon],
+                [destinationLat, destinationLon]
+            ];
+            var polyline = L.polyline(latlngs, {color: 'blue', weight: 4}).addTo(map);
+            map.fitBounds(polyline.getBounds());
+        }
+    </script>
+</body>
+</html>
